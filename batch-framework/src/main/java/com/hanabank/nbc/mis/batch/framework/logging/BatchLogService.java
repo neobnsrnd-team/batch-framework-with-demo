@@ -45,7 +45,7 @@ public class BatchLogService {
     public int calculateNextSeq(String batchAppId, String instanceId, String batchDate) {
         int maxSeq = hisMapper.selectMaxExecuteSeq(batchAppId, instanceId, batchDate);
         int nextSeq = maxSeq + 1;
-        log.debug("[{}] 실행 순번 계산: MAX({}) + 1 = {}", batchAppId, maxSeq, nextSeq);
+        log.info("[{}] 실행 순번 계산: MAX({}) + 1 = {}", batchAppId, maxSeq, nextSeq);
         return nextSeq;
     }
 

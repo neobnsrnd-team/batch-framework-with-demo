@@ -86,7 +86,7 @@ logging:
   config: classpath:logback-spring.xml
   level:
     root: INFO
-    com.hanabank.nbc.mis.batch: DEBUG
-    org.mybatis: DEBUG              # MyBatis SQL 로그
+    com.hanabank.nbc.mis.batch: INFO
+    org.mybatis: INFO
     org.springframework.security: INFO
     com.zaxxer.hikari: INFO

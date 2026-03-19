@@ -92,22 +92,22 @@
     <!-- 패키지별 로그 레벨 설정                                  -->
     <!-- ═══════════════════════════════════════════════════════ -->
 
-    <!-- 배치 프레임워크 — DEBUG (상세 로그) -->
-    <logger name="com.hanabank.nbc.mis.batch.framework" level="DEBUG" additivity="false">
+    <!-- 배치 프레임워크 — INFO -->
+    <logger name="com.hanabank.nbc.mis.batch.framework" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ASYNC_FILE"/>
         <appender-ref ref="FILE_ERROR"/>
     </logger>
 
-    <!-- 데모 배치 잡 — DEBUG -->
-    <logger name="com.hanabank.nbc.mis.batch.demo" level="DEBUG" additivity="false">
+    <!-- 데모 배치 잡 — INFO -->
+    <logger name="com.hanabank.nbc.mis.batch.demo" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ASYNC_FILE"/>
         <appender-ref ref="FILE_ERROR"/>
     </logger>
 
-    <!-- MyBatis SQL 로그 — DEBUG -->
-    <logger name="com.hanabank.nbc.mis.batch.framework.mapper" level="DEBUG" additivity="false">
+    <!-- MyBatis SQL 로그 — INFO -->
+    <logger name="com.hanabank.nbc.mis.batch.framework.mapper" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ASYNC_FILE"/>
     </logger>
