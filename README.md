@@ -137,6 +137,34 @@ H2 In-Memory DB (Oracle 호환 모드 `MODE=Oracle`)를 사용합니다.
 
 ## REST API
 
+### 인증 정보
+
+모든 REST API는 **Basic Authentication**이 필요합니다.
+
+| 항목 | 값 |
+|---|---|
+| **ID** | `batchadmin` |
+| **Password** | `batchpass` |
+
+**인증 방법:**
+
+```bash
+# 방법 1: -u 옵션 사용 (권장)
+curl -u batchadmin:batchpass http://localhost:8080/api/batch/jobs
+
+# 방법 2: Authorization 헤더 직접 지정
+# Base64 인코딩: echo -n "batchadmin:batchpass" | base64 → YmF0Y2hhZG1pbjpiYXRjaHBhc3M=
+curl -H "Authorization: Basic YmF0Y2hhZG1pbjpiYXRjaHBhc3M=" http://localhost:8080/api/batch/jobs
+```
+
+**Postman 설정:**
+1. `Authorization` 탭 선택
+2. Type: `Basic Auth`
+3. Username: `batchadmin`
+4. Password: `batchpass`
+
+---
+
 ### 수동 실행 엔드포인트
 
 ```
@@ -212,6 +240,73 @@ curl -X POST http://localhost:8080/api/batch/BATCH_INIT_FAIL/run \
   -H "Content-Type: application/json" \
   -d '{"baseBatchDate":"20260319","forceRerun":false,"params":{"apiKey":"VALID123"}}'
 ```
+
+---
+
+### 배치 목록 조회 엔드포인트
+
+현재 WAS 인스턴스에 등록된 배치 목록과 스케줄 정보를 조회합니다.
+
+```
+GET /api/batch/jobs
+Authorization: Basic batchadmin:batchpass
+```
+
+**응답 예시:**
+
+```json
+{
+  "instanceId": "WAS1",
+  "currentTime": "2026-03-19 16:40:00",
+  "totalCount": 3,
+  "jobs": [
+    {
+      "batchAppId": "BATCH_DAILY_REPORT",
+      "batchAppName": "일일 리포트 배치",
+      "batchAppDesc": "매일 01시 일일 리포트 생성",
+      "cronExpression": "0 0 1 * * ?",
+      "preBatchAppId": null,
+      "useYn": "Y",
+      "nextExecution": "2026-03-20 01:00:00",
+      "nextExecutionInMinutes": 505,
+      "nextExecutionFormatted": "8시간 25분 후"
+    }
+  ]
+}
+```
+
+| 필드 | 설명 |
+|---|---|
+| `cronExpression` | Cron 스케줄 표현식 |
+| `nextExecution` | 다음 실행 예정 시각 |
+| `nextExecutionInMinutes` | 다음 실행까지 남은 시간 (분) |
+| `nextExecutionFormatted` | 남은 시간 (한글 포맷) |
+
+---
+
+### 배치 이력 조회 엔드포인트
+
+배치 실행 이력을 최근 순으로 조회합니다.
+
+```
+GET /api/batch/history?limit=50
+Authorization: Basic batchadmin:batchpass
+```
+
+| 파라미터 | 기본값 | 설명 |
+|---|---|---|
+| `limit` | 50 | 조회 건수 |
+
+---
+
+### 실행 이력 호출자 구분 (LAST_UPDATE_USER_ID)
+
+배치 실행 이력 테이블(`FWK_BATCH_HIS`)의 `LAST_UPDATE_USER_ID` 필드로 호출자를 구분합니다.
+
+| 값 | 호출 방식 | 설명 |
+|---|---|---|
+| `0` | 스케줄러 자동 실행 | Cron 스케줄에 의한 자동 실행 |
+| `999999` | REST API 수동 실행 | `/api/batch/{id}/run` 호출 |
 
 ---
 
