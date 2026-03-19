@@ -106,8 +106,8 @@
         <appender-ref ref="FILE_ERROR"/>
     </logger>
 
-    <!-- MyBatis SQL 로그 — INFO -->
-    <logger name="com.hanabank.nbc.mis.batch.framework.mapper" level="INFO" additivity="false">
+    <!-- MyBatis SQL 로그 — DEBUG -->
+    <logger name="com.hanabank.nbc.mis.batch.framework.mapper" level="DEBUG" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ASYNC_FILE"/>
     </logger>

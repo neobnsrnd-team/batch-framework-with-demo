@@ -87,6 +87,6 @@ logging:
   level:
     root: INFO
     com.hanabank.nbc.mis.batch: INFO
-    org.mybatis: INFO
+    org.mybatis: DEBUG              # MyBatis SQL 로그
     org.springframework.security: INFO
     com.zaxxer.hikari: INFO
