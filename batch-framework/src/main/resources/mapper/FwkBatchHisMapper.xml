@@ -45,7 +45,7 @@
             #{instanceId},
             #{batchDate},
             #{batchExecuteSeq},
-            TO_CHAR(SYSTIMESTAMP, 'YYYYMMDDHH24MISSFF3'),
+            TO_CHAR(SYSTIMESTAMP, 'YYYYMMDDHH24MISS'),
             'RUNNING',
             #{lastUpdateUserId}
         )
@@ -58,7 +58,7 @@
     <update id="updateFinalLog"
             parameterType="com.hanabank.nbc.mis.batch.framework.vo.FwkBatchHisVo">
         UPDATE D_SPIDERLINK.FWK_BATCH_HIS
-           SET BATCH_END_DTIME      = TO_CHAR(SYSTIMESTAMP, 'YYYYMMDDHH24MISSFF3'),
+           SET BATCH_END_DTIME      = TO_CHAR(SYSTIMESTAMP, 'YYYYMMDDHH24MISS'),
                RES_RT_CODE         = #{resRtCode},
                ERROR_CODE          = #{errorCode},
                ERROR_REASON        = #{errorReason},
@@ -137,7 +137,7 @@
     <update id="cancelPreviousSuccess">
         UPDATE D_SPIDERLINK.FWK_BATCH_HIS
            SET RES_RT_CODE         = 'CANCELED',
-               BATCH_END_DTIME     = TO_CHAR(SYSTIMESTAMP, 'YYYYMMDDHH24MISSFF3'),
+               BATCH_END_DTIME     = TO_CHAR(SYSTIMESTAMP, 'YYYYMMDDHH24MISS'),
                LAST_UPDATE_USER_ID = #{canceledBy}
          WHERE BATCH_APP_ID = #{batchAppId}
            AND BATCH_DATE   = #{batchDate}

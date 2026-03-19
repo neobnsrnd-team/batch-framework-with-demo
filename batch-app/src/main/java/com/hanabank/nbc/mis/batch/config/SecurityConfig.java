@@ -37,9 +37,11 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())   // REST API는 CSRF 불필요
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()))  // H2 Console iframe 허용
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/batch/**").authenticated()  // 배치 API 인증 필요
                 .requestMatchers("/actuator/health").permitAll()   // 헬스체크 공개
+                .requestMatchers("/h2-console/**").permitAll()     // H2 Console 공개
                 .anyRequest().permitAll()
             )
             .httpBasic(basic -> {});         // HTTP Basic Auth 활성화

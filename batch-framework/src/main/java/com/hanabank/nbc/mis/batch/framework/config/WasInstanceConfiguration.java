@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
 import java.net.InetAddress;
@@ -16,7 +17,8 @@ import java.net.InetAddress;
  * <ol>
  *   <li>JVM System Property: {@code -Dbatch.instance.id=WAS1}</li>
  *   <li>환경변수: {@code BATCH_INSTANCE_ID=WAS1}</li>
- *   <li>기동 실패 (둘 다 없으면 IllegalStateException)</li>
+ *   <li>Spring Environment: application.yml의 {@code batch.instance.id: WAS1}</li>
+ *   <li>기동 실패 (셋 다 없으면 IllegalStateException)</li>
  * </ol>
  *
  * <p>제약:
@@ -35,7 +37,7 @@ public class WasInstanceConfiguration {
     private static final int    MAX_ID_LEN   = 4;
 
     @Bean
-    public WasInstanceIdentity wasInstanceIdentity() {
+    public WasInstanceIdentity wasInstanceIdentity(Environment env) {
         // 1차: System Property
         String instanceId = System.getProperty(SYS_PROP_KEY);
         String source = "SystemProperty(-D" + SYS_PROP_KEY + ")";
@@ -46,12 +48,19 @@ public class WasInstanceConfiguration {
             source = "EnvironmentVariable(" + ENV_KEY + ")";
         }
 
-        // 둘 다 없으면 기동 실패
+        // 3차: Spring Environment (application.yml의 batch.instance.id)
+        if (!StringUtils.hasText(instanceId)) {
+            instanceId = env.getProperty(SYS_PROP_KEY);
+            source = "SpringEnvironment(" + SYS_PROP_KEY + ")";
+        }
+
+        // 셋 다 없으면 기동 실패
         if (!StringUtils.hasText(instanceId)) {
             throw new IllegalStateException(
                     "[BatchFramework] INSTANCE_ID가 설정되지 않았습니다. " +
                     "JVM 기동 옵션에 -D" + SYS_PROP_KEY + "=WAS1 을 추가하거나 " +
-                    "환경변수 " + ENV_KEY + " 를 설정하세요.");
+                    "환경변수 " + ENV_KEY + " 를 설정하거나 " +
+                    "application.yml에 " + SYS_PROP_KEY + "=WAS1 을 설정하세요.");
         }
 
         // 최대 4자 검증

@@ -3,13 +3,13 @@ spring:
     name: hanabank-nbc-mis-batch
 
   # ─────────────────────────────────────────────────────────────
-  # Oracle DataSource (D_SPIDERLINK 스키마)
+  # H2 In-Memory DataSource (Oracle 호환 모드)
   # ─────────────────────────────────────────────────────────────
   datasource:
-    url: jdbc:oracle:thin:@localhost:1521/ORCL
-    username: D_SPIDERLINK
-    password: change_me
-    driver-class-name: oracle.jdbc.OracleDriver
+    url: jdbc:h2:mem:batchdb;MODE=Oracle;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
     hikari:
       pool-name: batch-hikari-pool
       maximum-pool-size: 10
@@ -17,7 +17,23 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
-      connection-test-query: SELECT 1 FROM DUAL
+
+  # ─────────────────────────────────────────────────────────────
+  # Spring SQL 초기화 (schema.sql + data.sql 자동 실행)
+  # ─────────────────────────────────────────────────────────────
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+
+  # ─────────────────────────────────────────────────────────────
+  # H2 Console (개발 편의 — http://localhost:8080/h2-console)
+  # ─────────────────────────────────────────────────────────────
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
 
   # ─────────────────────────────────────────────────────────────
   # Spring Security 자동 설정 비활성화
@@ -43,6 +59,8 @@ mybatis:
 # 배치 프레임워크 설정
 # ─────────────────────────────────────────────────────────────
 batch:
+  instance:
+    id: WAS1              # WAS 인스턴스 ID (FWK_WAS_EXEC_BATCH.INSTANCE_ID)
   framework:
     scheduler-pool-size: 5      # 동시 실행 가능한 최대 배치 수
     fail-fast: false            # 단건 실패 시 전체 중단 여부
