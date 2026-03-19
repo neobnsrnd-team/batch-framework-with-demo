@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -140,6 +141,16 @@ public class BatchManualController {
                 result.getResRtCode(), result.getElapsedMs());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 배치 실행 이력 조회.
+     *
+     * @param limit 조회 건수 (기본 50)
+     */
+    @GetMapping("/history")
+    public ResponseEntity<?> getHistory(@RequestParam(defaultValue = "50") int limit) {
+        return ResponseEntity.ok(hisMapper.selectRecentHistory(limit));
     }
 
     // =========================================================

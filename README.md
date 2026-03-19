@@ -457,3 +457,104 @@ pm.test("응답 필드 존재 확인", () => {
 | H2 Database | (Spring Boot 관리) |
 | Spring Security | (Spring Boot 관리) |
 | Maven | 3.x |
+
+---
+
+## 테스트 실행 결과 (2026-03-19)
+
+### 01. BATCH_DAILY_REPORT — 정상 완료 시나리오
+
+| 테스트 | 요청 | 결과 | 비고 |
+|---|---|---|---|
+| 01-04 | 중복 실행 시도 | `409 Conflict` | 이미 SUCCESS 이력 존재 |
+| 01-05 | 강제 재실행 (`forceRerun=true`) | `SUCCESS` | 100건 처리, 이전 SUCCESS → CANCELED |
+| 01-02/03 | 어제 날짜 + 커스텀 파라미터 | `SUCCESS` | 100건 처리 |
+| 01-07 | threshold 형식 오류 (`"abc"`) | `FAILED_INIT` | `INVALID_PARAM` |
+
+### 02. BATCH_DATA_SYNC — 선행 배치 의존 시나리오
+
+| 테스트 | 요청 | 결과 | 비고 |
+|---|---|---|---|
+| 02-01 | 선행 배치 완료 후 실행 | `SUCCESS` | 500건 처리 |
+| 02-02 | 선행 배치 미완료 (다른 날짜) | `SKIPPED` | `PRE_BATCH_NOT_DONE` |
+| 02-03/04 | forceRerun + chunkSize 변경 | `SUCCESS` | 500건 처리, 이전 SUCCESS → CANCELED |
+
+### 03. BATCH_INIT_FAIL — init() 실패 시나리오
+
+| 테스트 | 요청 | 결과 | 비고 |
+|---|---|---|---|
+| 03-01 | apiKey 없음 | `FAILED_INIT` | `MISSING_REQUIRED_PARAM` |
+| 03-02 | apiKey 무효 (`INVALID`) | `FAILED_INIT` | `API_AUTH_FAILED` |
+| 03-03 | apiKey 유효 (`VALID123`) | `SUCCESS` | 10건 처리 |
+
+### 04. BATCH_EXEC_NPE — 미처리 예외 시나리오
+
+| 테스트 | 요청 | 결과 | 비고 |
+|---|---|---|---|
+| 04-01 | NPE 발생 | `FAILED_EXEC` | `NullPointerException` |
+| 04-02 | 강제 재실행 | `FAILED_EXEC` | 동일 결과 반복 |
+
+### 05. BATCH_EXEC_BIZ_FAIL — 비즈니스 예외 시나리오
+
+| 테스트 | 요청 | 결과 | 비고 |
+|---|---|---|---|
+| 05-01 | 기본 실행 (failAtRecord=150) | `FAILED_EXEC` | 150번째에서 중단, `EXTERNAL_API_ERROR` |
+| 05-02 | 조기 실패 (failAtRecord=10) | `FAILED_EXEC` | 10번째에서 중단 |
+| 05-03 | 전체 성공 (failAtRecord=9999) | `SUCCESS` | 200건 전체 처리 |
+
+### 06. BATCH_PARTIAL_FAIL — 부분 실패 시나리오
+
+| 테스트 | 요청 | 결과 | 비고 |
+|---|---|---|---|
+| 06-01 | 기본 실행 (10% 실패, 임계 20%) | `SUCCESS` | 1000건 중 891 성공 / 109 실패 |
+| 06-02 | 실패율 초과 (25% 실패, 임계 20%) | `FAILED_EXEC` | 28% > 20%로 100건 처리 후 중단 |
+| 06-03 | 소량 처리 (100건, 5% 실패) | `SUCCESS` | 96 성공 / 4 실패 |
+| 06-04 | 실패율 0% | `SUCCESS` | 1000건 전체 성공 |
+
+### 07. BATCH_SLOW_PROCESS — 대용량 처리 시나리오
+
+| 테스트 | 요청 | 결과 | 비고 |
+|---|---|---|---|
+| 07-01 | 소량 빠른 실행 (100건) | `SUCCESS` | 695ms |
+| 07-02 | 1000건 처리 | `SUCCESS` | 2328ms |
+
+### 08. HTTP 에러 케이스
+
+| 테스트 | 요청 | 결과 | 비고 |
+|---|---|---|---|
+| 08-01 | 존재하지 않는 배치 ID | `404 Not Found` | `BATCH_NONEXISTENT` |
+| 08-02 | 인증 헤더 없음 | `401 Unauthorized` | — |
+| 08-03 | 잘못된 비밀번호 | `401 Unauthorized` | — |
+| 08-04 | 날짜 형식 오류 (하이픈 포함) | `400 Bad Request` | `2026-03-19` |
+| 08-05 | 날짜 숫자 아님 | `400 Bad Request` | `YYYYMMDD` |
+
+---
+
+### 배치 수행 이력 (FWK_BATCH_HIS)
+
+> 테스트 실행 시점: 2026-03-19 16:35 KST
+
+| BATCH_APP_ID | BATCH_DATE | SEQ | RES_RT_CODE | RECORD | SUCCESS | FAIL | ERROR_CODE |
+|---|---|---|---|---|---|---|---|
+| BATCH_DAILY_REPORT | 20260319 | 2 | SUCCESS | 100 | 100 | 0 | — |
+| BATCH_DAILY_REPORT | 20260319 | 1 | CANCELED | 100 | 100 | 0 | — |
+| BATCH_DAILY_REPORT | 20260318 | 1 | SUCCESS | 100 | 100 | 0 | — |
+| BATCH_DAILY_REPORT | 20260317 | 1 | SUCCESS | 100 | 100 | 0 | — |
+| BATCH_DAILY_REPORT | 20260316 | 1 | FAILED_INIT | 0 | 0 | 0 | INVALID_PARAM |
+| BATCH_DATA_SYNC | 20260319 | 2 | SUCCESS | 500 | 500 | 0 | — |
+| BATCH_DATA_SYNC | 20260319 | 1 | CANCELED | 500 | 500 | 0 | — |
+| BATCH_DATA_SYNC | 20260310 | 1 | SKIPPED | 0 | 0 | 0 | PRE_BATCH_NOT_DONE |
+| BATCH_INIT_FAIL | 20260319 | 3 | SUCCESS | 10 | 10 | 0 | — |
+| BATCH_INIT_FAIL | 20260319 | 2 | FAILED_INIT | 0 | 0 | 0 | API_AUTH_FAILED |
+| BATCH_INIT_FAIL | 20260319 | 1 | FAILED_INIT | 0 | 0 | 0 | MISSING_REQUIRED_PARAM |
+| BATCH_EXEC_NPE | 20260319 | 2 | FAILED_EXEC | 50 | 20 | 0 | NullPointerException |
+| BATCH_EXEC_NPE | 20260319 | 1 | FAILED_EXEC | 50 | 20 | 0 | NullPointerException |
+| BATCH_EXEC_BIZ_FAIL | 20260319 | 3 | SUCCESS | 200 | 200 | 0 | — |
+| BATCH_EXEC_BIZ_FAIL | 20260319 | 2 | FAILED_EXEC | 200 | 9 | 0 | EXTERNAL_API_ERROR |
+| BATCH_EXEC_BIZ_FAIL | 20260319 | 1 | FAILED_EXEC | 200 | 149 | 0 | EXTERNAL_API_ERROR |
+| BATCH_PARTIAL_FAIL | 20260319 | 4 | SUCCESS | 1000 | 1000 | 0 | — |
+| BATCH_PARTIAL_FAIL | 20260319 | 3 | SUCCESS | 100 | 96 | 4 | — |
+| BATCH_PARTIAL_FAIL | 20260319 | 2 | FAILED_EXEC | 1000 | 72 | 28 | EXCEED_MAX_FAIL_RATE |
+| BATCH_PARTIAL_FAIL | 20260319 | 1 | SUCCESS | 1000 | 891 | 109 | — |
+| BATCH_SLOW_PROCESS | 20260319 | 2 | SUCCESS | 1000 | 1000 | 0 | — |
+| BATCH_SLOW_PROCESS | 20260319 | 1 | SUCCESS | 100 | 100 | 0 | — |

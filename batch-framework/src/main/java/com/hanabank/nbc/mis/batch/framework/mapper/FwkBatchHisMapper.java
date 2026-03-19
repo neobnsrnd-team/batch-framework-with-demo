@@ -86,4 +86,12 @@ public interface FwkBatchHisMapper {
     int cancelPreviousSuccess(@Param("batchAppId")  String batchAppId,
                               @Param("batchDate")   String batchDate,
                               @Param("canceledBy")  String canceledBy);
+
+    /**
+     * 배치 실행 이력 전체 조회 (최근 순).
+     *
+     * @param limit 조회 건수 제한
+     * @return 이력 목록
+     */
+    java.util.List<FwkBatchHisVo> selectRecentHistory(@Param("limit") int limit);
 }
