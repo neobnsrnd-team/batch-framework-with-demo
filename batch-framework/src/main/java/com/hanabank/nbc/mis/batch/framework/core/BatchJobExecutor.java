@@ -57,26 +57,27 @@ public class BatchJobExecutor {
     // =========================================================
 
     /**
-     * 스케줄러 자동 실행 — baseBatchDate=오늘, 선행배치 체크 ON.
+     * 스케줄러 자동 실행 — baseBatchDate=오늘, 선행배치 체크 ON, callerUserId=0.
      */
     public BatchJobResult execute(BatchJob job, FwkBatchAppVo appMeta, Map<String, String> params) {
-        return execute(job, appMeta, params, null, false);
+        return execute(job, appMeta, params, null, false, BatchExecutionContext.CALLER_SCHEDULER);
     }
 
     /**
-     * REST 수동 실행 — 임의 baseBatchDate, 선행배치 체크 ON.
-     */
-    public BatchJobResult execute(BatchJob job, FwkBatchAppVo appMeta,
-                                  Map<String, String> params, String baseBatchDate) {
-        return execute(job, appMeta, params, baseBatchDate, false);
-    }
-
-    /**
-     * REST forceRerun 실행 — 임의 baseBatchDate, 선행배치 체크 선택.
+     * REST 수동 실행 — 임의 baseBatchDate, 선행배치 체크 ON, callerUserId=999999.
      */
     public BatchJobResult execute(BatchJob job, FwkBatchAppVo appMeta,
                                   Map<String, String> params, String baseBatchDate,
                                   boolean skipPreBatchCheck) {
+        return execute(job, appMeta, params, baseBatchDate, skipPreBatchCheck, BatchExecutionContext.CALLER_REST_API);
+    }
+
+    /**
+     * 배치 실행 핵심 메서드 — 모든 파라미터 명시.
+     */
+    public BatchJobResult execute(BatchJob job, FwkBatchAppVo appMeta,
+                                  Map<String, String> params, String baseBatchDate,
+                                  boolean skipPreBatchCheck, String callerUserId) {
 
         final String instanceId          = wasIdentity.getInstanceId();
         final String finalBaseBatchDate  = StringUtils.hasText(baseBatchDate)
@@ -103,7 +104,7 @@ public class BatchJobExecutor {
         int executeSeq = logService.calculateNextSeq(batchAppId, instanceId, finalBaseBatchDate);
         Map<String, String> mergedParams = mergeParams(appMeta.getProperties(), params);
         BatchExecutionContext context = new BatchExecutionContext(
-                appMeta, instanceId, finalBaseBatchDate, executeSeq, mergedParams);
+                appMeta, instanceId, finalBaseBatchDate, executeSeq, mergedParams, callerUserId);
 
         log.info("[{}][EXEC] 실행 컨텍스트 생성 완료 | seq={}, params={}",
                 batchAppId, executeSeq, mergedParams);

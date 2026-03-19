@@ -39,6 +39,9 @@ public class BatchExecutionContext {
     /** 실행 파라미터 (DB PROPERTIES + REST 요청 파라미터 병합, REST 우선) */
     private final Map<String, String> params;
 
+    /** 호출자 ID (스케줄러 자동실행: "0", REST 수동실행: "999999") */
+    private final String callerUserId;
+
     // =========================================================
     // 처리 카운터 (가변 - BatchJob 구현체가 업데이트)
     // =========================================================
@@ -72,17 +75,24 @@ public class BatchExecutionContext {
     // 생성자
     // =========================================================
 
+    /** 스케줄러 자동 실행 호출자 ID */
+    public static final String CALLER_SCHEDULER = "0";
+    /** REST API 수동 실행 호출자 ID */
+    public static final String CALLER_REST_API  = "999999";
+
     public BatchExecutionContext(FwkBatchAppVo appMeta,
                                  String instanceId,
                                  String baseBatchDate,
                                  int executeSeq,
-                                 Map<String, String> params) {
+                                 Map<String, String> params,
+                                 String callerUserId) {
         this.batchAppId    = appMeta.getBatchAppId();
         this.instanceId    = instanceId;
         this.baseBatchDate = baseBatchDate;
         this.executeSeq    = executeSeq;
         this.appMeta       = appMeta;
         this.params        = Collections.unmodifiableMap(new HashMap<>(params));
+        this.callerUserId  = callerUserId;
     }
 
     // =========================================================
@@ -157,6 +167,7 @@ public class BatchExecutionContext {
     public int getExecuteSeq()       { return executeSeq; }
     public FwkBatchAppVo getAppMeta(){ return appMeta; }
     public Map<String, String> getParams() { return params; }
+    public String getCallerUserId()  { return callerUserId; }
 
     public long getRecordCount()  { return recordCount; }
     public long getExecuteCount() { return executeCount; }

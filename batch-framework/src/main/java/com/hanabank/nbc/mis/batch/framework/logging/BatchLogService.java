@@ -65,7 +65,7 @@ public class BatchLogService {
         vo.setBatchDate(context.getBaseBatchDate());
         vo.setBatchExecuteSeq(context.getExecuteSeq());
         vo.setResRtCode("RUNNING");
-        vo.setLastUpdateUserId(context.getBatchAppId());
+        vo.setLastUpdateUserId(context.getCallerUserId());
 
         hisMapper.insertInitLog(vo);
         log.info("[{}][LOG] 시작 이력 INSERT 완료 | batchDate={}, seq={}, status=RUNNING",
@@ -99,7 +99,7 @@ public class BatchLogService {
         vo.setExecuteCount(result.getExecuteCount());
         vo.setSuccessCount(result.getSuccessCount());
         vo.setFailCount(result.getFailCount());
-        vo.setLastUpdateUserId(context.getBatchAppId());
+        vo.setLastUpdateUserId(context.getCallerUserId());
 
         hisMapper.updateFinalLog(vo);
         log.info("[{}][LOG] 종료 이력 UPDATE 완료 | batchDate={}, seq={}, status={}, record={}, exec={}, success={}, fail={}, elapsed={}ms",

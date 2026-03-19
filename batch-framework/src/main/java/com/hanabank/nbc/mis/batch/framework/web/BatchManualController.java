@@ -15,8 +15,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import com.hanabank.nbc.mis.batch.framework.vo.BatchScheduleVo;
+import org.springframework.scheduling.support.CronExpression;
+
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -151,6 +158,72 @@ public class BatchManualController {
     @GetMapping("/history")
     public ResponseEntity<?> getHistory(@RequestParam(defaultValue = "50") int limit) {
         return ResponseEntity.ok(hisMapper.selectRecentHistory(limit));
+    }
+
+    /**
+     * 현재 인스턴스에 등록된 배치 목록 조회.
+     * Cron 스케줄 정보 및 다음 실행까지 남은 시간을 포함한다.
+     */
+    @GetMapping("/jobs")
+    public ResponseEntity<?> getRegisteredJobs() {
+        String instanceId = wasIdentity.getInstanceId();
+        List<BatchScheduleVo> schedules = scheduleMapper.selectSchedulesForInstance(instanceId);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (BatchScheduleVo schedule : schedules) {
+            Map<String, Object> jobInfo = new LinkedHashMap<>();
+            jobInfo.put("batchAppId", schedule.getBatchAppId());
+            jobInfo.put("batchAppName", schedule.getBatchAppName());
+            jobInfo.put("batchAppDesc", schedule.getBatchAppDesc());
+            jobInfo.put("cronExpression", schedule.getCronText());
+            jobInfo.put("preBatchAppId", schedule.getPreBatchAppId());
+            jobInfo.put("useYn", schedule.getUseYn());
+
+            // Cron 표현식으로 다음 실행 시간 계산
+            String cronText = schedule.getCronText();
+            if (cronText != null && !cronText.isBlank()) {
+                try {
+                    CronExpression cron = CronExpression.parse(cronText);
+                    LocalDateTime nextExecution = cron.next(now);
+                    if (nextExecution != null) {
+                        Duration duration = Duration.between(now, nextExecution);
+                        long totalMinutes = duration.toMinutes();
+                        long hours = totalMinutes / 60;
+                        long minutes = totalMinutes % 60;
+
+                        jobInfo.put("nextExecution", nextExecution.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                        jobInfo.put("nextExecutionInMinutes", totalMinutes);
+                        jobInfo.put("nextExecutionFormatted", formatDuration(hours, minutes));
+                    }
+                } catch (Exception e) {
+                    log.warn("[REST] Cron 파싱 실패: {} - {}", cronText, e.getMessage());
+                    jobInfo.put("nextExecution", "파싱 오류: " + e.getMessage());
+                }
+            }
+
+            result.add(jobInfo);
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "instanceId", instanceId,
+                "currentTime", now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                "totalCount", result.size(),
+                "jobs", result
+        ));
+    }
+
+    private String formatDuration(long hours, long minutes) {
+        if (hours > 0 && minutes > 0) {
+            return hours + "시간 " + minutes + "분 후";
+        } else if (hours > 0) {
+            return hours + "시간 후";
+        } else if (minutes > 0) {
+            return minutes + "분 후";
+        } else {
+            return "1분 이내";
+        }
     }
 
     // =========================================================
