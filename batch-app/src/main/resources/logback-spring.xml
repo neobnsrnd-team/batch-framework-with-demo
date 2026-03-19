@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- 로그 파일 경로 (JVM 옵션 또는 기본값) -->
+    <property name="LOG_PATH"    value="${LOG_PATH:-logs}"/>
+    <property name="APP_NAME"    value="batch-demo"/>
+    <property name="INSTANCE_ID" value="${batch.instance.id:-UNKNOWN}"/>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- CONSOLE Appender — 컬러 출력, 배치 전용 패턴              -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%boldCyan(%-20thread)] %boldGreen(%-50logger{50}) %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- FILE Appender — 전체 로그 (Rolling)                     -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <appender name="FILE_ALL" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-${INSTANCE_ID}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${APP_NAME}-${INSTANCE_ID}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%-20thread] %-50logger{50} %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- FILE Appender — 배치 실행 로그만 별도 파일               -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <appender name="FILE_BATCH" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-${INSTANCE_ID}-batch.log</file>
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+                <marker>BATCH</marker>
+            </evaluator>
+            <onMismatch>DENY</onMismatch>
+            <onMatch>NEUTRAL</onMatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${APP_NAME}-${INSTANCE_ID}-batch.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%-20thread] %-50logger{50} %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- FILE Appender — ERROR 로그만 별도 파일                   -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-${INSTANCE_ID}-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${APP_NAME}-${INSTANCE_ID}-error.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%-20thread] %-50logger{50} %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 비동기 Appender (성능 최적화)                            -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>false</neverBlock>
+        <appender-ref ref="FILE_ALL"/>
+    </appender>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 패키지별 로그 레벨 설정                                  -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <!-- 배치 프레임워크 — DEBUG (상세 로그) -->
+    <logger name="com.hanabank.nbc.mis.batch.framework" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC_FILE"/>
+        <appender-ref ref="FILE_ERROR"/>
+    </logger>
+
+    <!-- 데모 배치 잡 — DEBUG -->
+    <logger name="com.hanabank.nbc.mis.batch.demo" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC_FILE"/>
+        <appender-ref ref="FILE_ERROR"/>
+    </logger>
+
+    <!-- MyBatis SQL 로그 — DEBUG -->
+    <logger name="com.hanabank.nbc.mis.batch.framework.mapper" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC_FILE"/>
+    </logger>
+
+    <!-- Spring Security — INFO -->
+    <logger name="org.springframework.security" level="INFO"/>
+
+    <!-- HikariCP — WARN (연결 오류만) -->
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- Root Logger                                             -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC_FILE"/>
+        <appender-ref ref="FILE_ERROR"/>
+    </root>
+
+</configuration>

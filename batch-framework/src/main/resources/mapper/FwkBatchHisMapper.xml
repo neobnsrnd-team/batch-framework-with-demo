@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hanabank.nbc.mis.batch.framework.mapper.FwkBatchHisMapper">
+
+    <!-- ========================================================= -->
+    <!-- ResultMap                                                   -->
+    <!-- ========================================================= -->
+
+    <resultMap id="FwkBatchHisResultMap"
+               type="com.hanabank.nbc.mis.batch.framework.vo.FwkBatchHisVo">
+        <id     property="batchAppId"      column="BATCH_APP_ID"/>
+        <id     property="instanceId"      column="INSTANCE_ID"/>
+        <id     property="batchDate"       column="BATCH_DATE"/>
+        <id     property="batchExecuteSeq" column="BATCH_EXECUTE_SEQ"/>
+        <result property="logDtime"        column="LOG_DTIME"/>
+        <result property="batchEndDtime"   column="BATCH_END_DTIME"/>
+        <result property="resRtCode"       column="RES_RT_CODE"/>
+        <result property="errorCode"       column="ERROR_CODE"/>
+        <result property="errorReason"     column="ERROR_REASON"/>
+        <result property="recordCount"     column="RECORD_COUNT"/>
+        <result property="executeCount"    column="EXECUTE_COUNT"/>
+        <result property="successCount"    column="SUCCESS_COUNT"/>
+        <result property="failCount"       column="FAIL_COUNT"/>
+        <result property="lastUpdateUserId" column="LAST_UPDATE_USER_ID"/>
+    </resultMap>
+
+    <!-- ========================================================= -->
+    <!-- 배치 시작 이력 INSERT (상태: RUNNING)                       -->
+    <!-- ========================================================= -->
+
+    <insert id="insertInitLog"
+            parameterType="com.hanabank.nbc.mis.batch.framework.vo.FwkBatchHisVo">
+        INSERT INTO D_SPIDERLINK.FWK_BATCH_HIS (
+            BATCH_APP_ID,
+            INSTANCE_ID,
+            BATCH_DATE,
+            BATCH_EXECUTE_SEQ,
+            LOG_DTIME,
+            RES_RT_CODE,
+            LAST_UPDATE_USER_ID
+        ) VALUES (
+            #{batchAppId},
+            #{instanceId},
+            #{batchDate},
+            #{batchExecuteSeq},
+            TO_CHAR(SYSTIMESTAMP, 'YYYYMMDDHH24MISSFF3'),
+            'RUNNING',
+            #{lastUpdateUserId}
+        )
+    </insert>
+
+    <!-- ========================================================= -->
+    <!-- 배치 종료 이력 UPDATE                                       -->
+    <!-- ========================================================= -->
+
+    <update id="updateFinalLog"
+            parameterType="com.hanabank.nbc.mis.batch.framework.vo.FwkBatchHisVo">
+        UPDATE D_SPIDERLINK.FWK_BATCH_HIS
+           SET BATCH_END_DTIME      = TO_CHAR(SYSTIMESTAMP, 'YYYYMMDDHH24MISSFF3'),
+               RES_RT_CODE         = #{resRtCode},
+               ERROR_CODE          = #{errorCode},
+               ERROR_REASON        = #{errorReason},
+               RECORD_COUNT        = #{recordCount},
+               EXECUTE_COUNT       = #{executeCount},
+               SUCCESS_COUNT       = #{successCount},
+               FAIL_COUNT          = #{failCount},
+               LAST_UPDATE_USER_ID = #{lastUpdateUserId}
+         WHERE BATCH_APP_ID      = #{batchAppId}
+           AND INSTANCE_ID       = #{instanceId}
+           AND BATCH_DATE        = #{batchDate}
+           AND BATCH_EXECUTE_SEQ = #{batchExecuteSeq}
+    </update>
+
+    <!-- ========================================================= -->
+    <!-- 당일 최대 실행 순번 조회                                     -->
+    <!-- ========================================================= -->
+
+    <select id="selectMaxExecuteSeq" resultType="int">
+        SELECT NVL(MAX(BATCH_EXECUTE_SEQ), 0)
+          FROM D_SPIDERLINK.FWK_BATCH_HIS
+         WHERE BATCH_APP_ID = #{batchAppId}
+           AND INSTANCE_ID  = #{instanceId}
+           AND BATCH_DATE   = #{batchDate}
+    </select>
+
+    <!-- ========================================================= -->
+    <!-- 선행 배치 당일 SUCCESS 존재 여부 (WAS 인스턴스 무관)          -->
+    <!-- ========================================================= -->
+
+    <select id="existsSuccessToday" resultType="boolean">
+        SELECT CASE
+                   WHEN COUNT(*) > 0 THEN 1
+                   ELSE 0
+               END
+          FROM D_SPIDERLINK.FWK_BATCH_HIS
+         WHERE BATCH_APP_ID = #{batchAppId}
+           AND BATCH_DATE   = #{batchDate}
+           AND RES_RT_CODE  = 'SUCCESS'
+    </select>
+
+    <!-- ========================================================= -->
+    <!-- RUNNING 상태 이력 존재 여부 (중복 실행 방지)                 -->
+    <!-- ========================================================= -->
+
+    <select id="existsRunning" resultType="boolean">
+        SELECT CASE
+                   WHEN COUNT(*) > 0 THEN 1
+                   ELSE 0
+               END
+          FROM D_SPIDERLINK.FWK_BATCH_HIS
+         WHERE BATCH_APP_ID = #{batchAppId}
+           AND BATCH_DATE   = #{batchDate}
+           AND RES_RT_CODE  = 'RUNNING'
+    </select>
+
+    <!-- ========================================================= -->
+    <!-- SUCCESS 이력 존재 여부 (forceRerun 전 확인)                  -->
+    <!-- ========================================================= -->
+
+    <select id="existsSuccess" resultType="boolean">
+        SELECT CASE
+                   WHEN COUNT(*) > 0 THEN 1
+                   ELSE 0
+               END
+          FROM D_SPIDERLINK.FWK_BATCH_HIS
+         WHERE BATCH_APP_ID = #{batchAppId}
+           AND BATCH_DATE   = #{batchDate}
+           AND RES_RT_CODE  = 'SUCCESS'
+    </select>
+
+    <!-- ========================================================= -->
+    <!-- SUCCESS → CANCELED 변경 (forceRerun)                        -->
+    <!-- ========================================================= -->
+
+    <update id="cancelPreviousSuccess">
+        UPDATE D_SPIDERLINK.FWK_BATCH_HIS
+           SET RES_RT_CODE         = 'CANCELED',
+               BATCH_END_DTIME     = TO_CHAR(SYSTIMESTAMP, 'YYYYMMDDHH24MISSFF3'),
+               LAST_UPDATE_USER_ID = #{canceledBy}
+         WHERE BATCH_APP_ID = #{batchAppId}
+           AND BATCH_DATE   = #{batchDate}
+           AND RES_RT_CODE  = 'SUCCESS'
+    </update>
+
+</mapper>

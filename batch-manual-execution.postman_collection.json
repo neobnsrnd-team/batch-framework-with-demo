@@ -1,0 +1,1068 @@
+{
+  "info": {
+    "name": "HanaBank NBC MIS - 배치 수동 실행 API",
+    "_postman_id": "hanabank-batch-manual-v1",
+    "description": "배치 수동 실행 REST API 테스트 컬렉션\n\n## 인증\nBasic Auth: batchadmin / batchpass\n\n## 엔드포인트\nPOST /api/batch/{batchAppId}/run\n\n## 데모 배치 목록\n| BATCH_APP_ID | 시나리오 |\n|---|---|\n| BATCH_DAILY_REPORT | 정상 수행 (100건) |\n| BATCH_DATA_SYNC | 정상 수행 + 선행 배치 의존 (500건) |\n| BATCH_INIT_FAIL | init() 실패 (파라미터 누락/무효) |\n| BATCH_EXEC_NPE | executeBatch() NPE 미처리 예외 |\n| BATCH_EXEC_BIZ_FAIL | executeBatch() 비즈니스 예외 |\n| BATCH_PARTIAL_FAIL | 부분 실패 (단건 오류 계속 진행) |\n| BATCH_SLOW_PROCESS | 대용량 처리 (처리 시간 모니터링) |",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",   "value": "http://localhost:8080", "type": "string" },
+    { "key": "username",  "value": "batchadmin",            "type": "string" },
+    { "key": "password",  "value": "batchpass",             "type": "string" },
+    { "key": "today",     "value": "20260319",              "type": "string", "description": "오늘 날짜 YYYYMMDD" },
+    { "key": "yesterday", "value": "20260318",              "type": "string", "description": "어제 날짜 YYYYMMDD" }
+  ],
+  "auth": {
+    "type": "basic",
+    "basic": [
+      { "key": "username", "value": "{{username}}", "type": "string" },
+      { "key": "password", "value": "{{password}}", "type": "string" }
+    ]
+  },
+  "item": [
+
+    {
+      "name": "01. BATCH_DAILY_REPORT",
+      "description": "일일 리포트 배치 — 정상 수행 시나리오",
+      "item": [
+
+        {
+          "name": "01-01. 기본 실행 (파라미터 없음)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('성공건수 > 0', () => pm.expect(body.successCount).to.be.above(0));",
+                  "pm.test('실패건수 = 0', () => pm.expect(body.failCount).to.eql(0));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "01-02. 커스텀 파라미터 (reportType=WEEKLY, threshold=50)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {\n    \"reportType\": \"WEEKLY\",\n    \"threshold\": \"50\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('baseBatchDate 확인', () => pm.expect(body.baseBatchDate).to.eql(pm.collectionVariables.get('today')));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "01-03. 어제 날짜 기준 실행 (baseBatchDate=yesterday)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{yesterday}}\",\n  \"forceRerun\": false,\n  \"params\": {\n    \"reportType\": \"DAILY\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('baseBatchDate=어제', () => pm.expect(body.baseBatchDate).to.eql(pm.collectionVariables.get('yesterday')));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "01-04. 이미 성공 이력 있을 때 → 409 Conflict",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": { "exec": ["// 01-01을 먼저 실행하여 SUCCESS 이력을 만든 후 이 요청을 실행하세요"] }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('이미 성공 이력 존재 오류', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(JSON.stringify(body)).to.include('forceRerun');",
+                  "});",
+                  "console.log('응답:', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "01-05. 강제 재실행 (forceRerun=true) → SUCCESS + canceledCount≥1",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"reportType\": \"DAILY\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": { "exec": ["// 01-01 실행 후 이 요청을 실행하면 기존 SUCCESS → CANCELED 처리 후 재실행됩니다"] }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('forceRerun=true 확인', () => pm.expect(body.forceRerun).to.be.true);",
+                  "pm.test('canceledCount ≥ 1', () => pm.expect(body.canceledCount).to.be.at.least(1));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "01-06. threshold=0 → 실패 건수 0 이상이면 FAILED_EXEC",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"reportType\": \"DAILY\",\n    \"threshold\": \"0\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "// threshold=0이면 모든 처리가 성공(실패=0)이므로 SUCCESS",
+                  "pm.test('결과 SUCCESS (threshold 초과 없음)', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "01-07. threshold 파라미터 형식 오류 → FAILED_INIT",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"threshold\": \"NOT_A_NUMBER\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 (실행은 됐지만 init 실패)', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 FAILED_INIT', () => pm.expect(body.resRtCode).to.eql('FAILED_INIT'));",
+                  "pm.test('errorCode 존재', () => pm.expect(body.errorCode).to.not.be.null);",
+                  "pm.test('errorReason 존재', () => pm.expect(body.errorReason).to.not.be.null);",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "02. BATCH_DATA_SYNC",
+      "description": "데이터 동기화 배치 — 선행 배치(BATCH_DAILY_REPORT) 의존성 시나리오",
+      "item": [
+
+        {
+          "name": "02-01. 선행 배치 완료 후 실행 → SUCCESS",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DATA_SYNC/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DATA_SYNC","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {\n    \"chunkSize\": \"50\",\n    \"targetSystem\": \"ERP\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": { "exec": ["// 선행 배치(BATCH_DAILY_REPORT)가 오늘 날짜로 SUCCESS 완료되어야 합니다"] }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('처리 건수 500', () => pm.expect(body.recordCount).to.eql(500));",
+                  "pm.test('실패 없음', () => pm.expect(body.failCount).to.eql(0));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "02-02. 선행 배치 미완료 → SKIPPED",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DATA_SYNC/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DATA_SYNC","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"20200101\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": { "exec": ["// 20200101은 오래된 날짜 → BATCH_DAILY_REPORT 선행 이력 없음 → SKIPPED 예상"] }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SKIPPED (선행 배치 미완료)', () => pm.expect(body.resRtCode).to.eql('SKIPPED'));",
+                  "pm.test('errorCode PRE_BATCH_NOT_DONE', () => pm.expect(body.errorCode).to.eql('PRE_BATCH_NOT_DONE'));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "02-03. 선행 배치 체크 건너뜀 (forceRerun=true) → SUCCESS",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DATA_SYNC/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DATA_SYNC","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"20200101\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"chunkSize\": \"100\",\n    \"targetSystem\": \"ERP\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS (선행 배치 체크 건너뜀)', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('forceRerun=true', () => pm.expect(body.forceRerun).to.be.true);",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "02-04. chunkSize 변경 (chunkSize=100)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DATA_SYNC/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DATA_SYNC","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{yesterday}}\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"chunkSize\": \"100\",\n    \"targetSystem\": \"CRM\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "03. BATCH_INIT_FAIL",
+      "description": "init() 단계 실패 시나리오 — apiKey 파라미터 검증",
+      "item": [
+
+        {
+          "name": "03-01. apiKey 없음 → FAILED_INIT (MISSING_REQUIRED_PARAM)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_INIT_FAIL/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_INIT_FAIL","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 FAILED_INIT', () => pm.expect(body.resRtCode).to.eql('FAILED_INIT'));",
+                  "pm.test('errorCode MISSING_REQUIRED_PARAM', () => pm.expect(body.errorCode).to.eql('MISSING_REQUIRED_PARAM'));",
+                  "pm.test('executeBatch 미실행 (recordCount=0)', () => pm.expect(body.recordCount).to.eql(0));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "03-02. apiKey=INVALID → FAILED_INIT (API_AUTH_FAILED)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_INIT_FAIL/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_INIT_FAIL","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"apiKey\": \"INVALID\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 FAILED_INIT', () => pm.expect(body.resRtCode).to.eql('FAILED_INIT'));",
+                  "pm.test('errorCode API_AUTH_FAILED', () => pm.expect(body.errorCode).to.eql('API_AUTH_FAILED'));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "03-03. apiKey=VALID123 → SUCCESS (init 통과)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_INIT_FAIL/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_INIT_FAIL","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"apiKey\": \"VALID123\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS (init 통과)', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "04. BATCH_EXEC_NPE",
+      "description": "executeBatch() 미처리 예외 (NullPointerException) 시나리오",
+      "item": [
+
+        {
+          "name": "04-01. NPE 발생 → FAILED_EXEC (NullPointerException)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_EXEC_NPE/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_EXEC_NPE","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 FAILED_EXEC', () => pm.expect(body.resRtCode).to.eql('FAILED_EXEC'));",
+                  "pm.test('errorCode=NullPointerException (프레임워크 자동 포착)', () => {",
+                  "  pm.expect(body.errorCode).to.eql('NullPointerException');",
+                  "});",
+                  "pm.test('20건 성공 후 NPE (successCount=20)', () => pm.expect(body.successCount).to.eql(20));",
+                  "pm.test('errorReason에 NPE 메시지 포함', () => {",
+                  "  pm.expect(body.errorReason).to.not.be.null;",
+                  "});",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "04-02. NPE 강제 재실행 → 동일하게 FAILED_EXEC",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_EXEC_NPE/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_EXEC_NPE","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": true,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 FAILED_EXEC (동일 버그)', () => pm.expect(body.resRtCode).to.eql('FAILED_EXEC'));",
+                  "pm.test('forceRerun=true', () => pm.expect(body.forceRerun).to.be.true);",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "05. BATCH_EXEC_BIZ_FAIL",
+      "description": "executeBatch() 비즈니스 예외 (BatchExecutionException) 시나리오",
+      "item": [
+
+        {
+          "name": "05-01. 기본 실행 → FAILED_EXEC (150번째 레코드에서 실패)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_EXEC_BIZ_FAIL/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_EXEC_BIZ_FAIL","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 FAILED_EXEC', () => pm.expect(body.resRtCode).to.eql('FAILED_EXEC'));",
+                  "pm.test('errorCode EXTERNAL_API_ERROR', () => pm.expect(body.errorCode).to.eql('EXTERNAL_API_ERROR'));",
+                  "pm.test('149건 성공 후 중단 (successCount=149)', () => pm.expect(body.successCount).to.eql(149));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "05-02. failAtRecord=10 → 9건 성공 후 FAILED_EXEC",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_EXEC_BIZ_FAIL/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_EXEC_BIZ_FAIL","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"failAtRecord\": \"10\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 FAILED_EXEC', () => pm.expect(body.resRtCode).to.eql('FAILED_EXEC'));",
+                  "pm.test('9건 성공 후 중단', () => pm.expect(body.successCount).to.eql(9));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "05-03. failAtRecord=999 → 200건 미만 → SUCCESS (failAt이 총건수 초과)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_EXEC_BIZ_FAIL/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_EXEC_BIZ_FAIL","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"failAtRecord\": \"999\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS (failAt 999 > 총 200건)', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('성공건수 200', () => pm.expect(body.successCount).to.eql(200));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "06. BATCH_PARTIAL_FAIL",
+      "description": "부분 실패 시나리오 — 단건 오류 계속 진행, 임계치 초과 시 중단",
+      "item": [
+
+        {
+          "name": "06-01. 기본 실행 (실패율 10%, 임계 20%) → SUCCESS",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_PARTIAL_FAIL/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_PARTIAL_FAIL","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {\n    \"totalRecords\": \"1000\",\n    \"failRatePercent\": \"10\",\n    \"maxFailRatePercent\": \"20\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS (실패율 10% < 임계 20%)', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('총 처리 1000건', () => pm.expect(body.recordCount).to.eql(1000));",
+                  "pm.test('성공건수 > 800', () => pm.expect(body.successCount).to.be.above(800));",
+                  "pm.test('실패건수 > 0', () => pm.expect(body.failCount).to.be.above(0));",
+                  "console.log(`결과: 성공=${body.successCount}, 실패=${body.failCount}`);",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "06-02. 실패율 25% 초과 → FAILED_EXEC (임계 초과 중단)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_PARTIAL_FAIL/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_PARTIAL_FAIL","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"totalRecords\": \"1000\",\n    \"failRatePercent\": \"25\",\n    \"maxFailRatePercent\": \"20\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 FAILED_EXEC (실패율 25% > 임계 20%)', () => pm.expect(body.resRtCode).to.eql('FAILED_EXEC'));",
+                  "pm.test('errorCode EXCEED_MAX_FAIL_RATE', () => pm.expect(body.errorCode).to.eql('EXCEED_MAX_FAIL_RATE'));",
+                  "pm.test('errorReason 포함', () => pm.expect(body.errorReason).to.not.be.null);",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "06-03. 소량 처리 (totalRecords=100, 실패율 5%) → SUCCESS",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_PARTIAL_FAIL/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_PARTIAL_FAIL","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{yesterday}}\",\n  \"forceRerun\": false,\n  \"params\": {\n    \"totalRecords\": \"100\",\n    \"failRatePercent\": \"5\",\n    \"maxFailRatePercent\": \"30\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('totalRecords=100', () => pm.expect(body.recordCount).to.eql(100));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "06-04. 실패율 0% (완전 성공) → SUCCESS + failCount=0",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_PARTIAL_FAIL/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_PARTIAL_FAIL","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"20200101\",\n  \"forceRerun\": false,\n  \"params\": {\n    \"totalRecords\": \"500\",\n    \"failRatePercent\": \"0\",\n    \"maxFailRatePercent\": \"10\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('실패건수=0', () => pm.expect(body.failCount).to.eql(0));",
+                  "pm.test('성공건수=500', () => pm.expect(body.successCount).to.eql(500));",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "07. BATCH_SLOW_PROCESS",
+      "description": "대용량 처리 배치 — 진행률 모니터링 시나리오",
+      "item": [
+
+        {
+          "name": "07-01. 소량 빠른 실행 (100건, 1ms/건) → SUCCESS",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_SLOW_PROCESS/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_SLOW_PROCESS","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {\n    \"totalRecords\": \"100\",\n    \"msPerRecord\": \"1\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('100건 모두 성공', () => {",
+                  "  pm.expect(body.successCount).to.eql(100);",
+                  "  pm.expect(body.failCount).to.eql(0);",
+                  "});",
+                  "console.log(`소요시간: ${body.elapsedMs}ms`);",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "07-02. 1000건 처리 (elapsedMs 측정)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_SLOW_PROCESS/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_SLOW_PROCESS","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{yesterday}}\",\n  \"forceRerun\": false,\n  \"params\": {\n    \"totalRecords\": \"1000\",\n    \"msPerRecord\": \"1\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('결과 SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('1000건 모두 성공', () => pm.expect(body.successCount).to.eql(1000));",
+                  "pm.test('소요시간 기록됨', () => pm.expect(body.elapsedMs).to.be.above(0));",
+                  "console.log(`소요시간: ${body.elapsedMs}ms (${body.successCount}건)`);",
+                  "console.log('결과:', JSON.stringify(body, null, 2));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "08. 에러 케이스 (인증/요청 오류)",
+      "description": "인증 실패, 잘못된 배치 ID, 날짜 형식 오류 등 에러 케이스",
+      "item": [
+
+        {
+          "name": "08-01. 잘못된 배치 ID → 404 Not Found",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_NOT_EXISTS/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_NOT_EXISTS","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 404 Not Found', () => pm.response.to.have.status(404));",
+                  "console.log('응답:', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "08-02. 인증 없음 → 401 Unauthorized",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "console.log('응답 상태:', pm.response.status);"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "08-03. 잘못된 비밀번호 → 401 Unauthorized",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "batchadmin",   "type": "string" },
+                { "key": "password", "value": "wrongpassword", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"{{today}}\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "console.log('응답 상태:', pm.response.status);"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "08-04. baseBatchDate 형식 오류 (8자리 아님) → 400 Bad Request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"2026-03-19\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 400 Bad Request (날짜 형식 오류)', () => pm.response.to.have.status(400));",
+                  "console.log('응답:', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "08-05. baseBatchDate 숫자 아님 → 400 Bad Request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"YYYYMMDD\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "console.log('응답:', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "09. forceRerun 시나리오 (연속 실행)",
+      "description": "동일 날짜 반복 실행 — SUCCESS → CANCELED → 재실행 전체 흐름",
+      "item": [
+
+        {
+          "name": "09-01. [Step1] 최초 실행 → SUCCESS",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"20260101\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('[Step1] SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('canceledCount=0 (최초 실행)', () => pm.expect(body.canceledCount).to.eql(0));",
+                  "console.log('[Step1] 최초 실행 완료:', body.resRtCode);"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "09-02. [Step2] 중복 실행 시도 → 409 Conflict",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"20260101\",\n  \"forceRerun\": false,\n  \"params\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[Step2] HTTP 409 Conflict', () => pm.response.to.have.status(409));",
+                  "console.log('[Step2] 중복 실행 차단:', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "09-03. [Step3] 강제 재실행 → SUCCESS + canceledCount=1",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"20260101\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"reportType\": \"CORRECTION\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('[Step3] SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('canceledCount=1 (이전 SUCCESS → CANCELED)', () => pm.expect(body.canceledCount).to.be.at.least(1));",
+                  "pm.test('forceRerun=true', () => pm.expect(body.forceRerun).to.be.true);",
+                  "console.log(`[Step3] 재실행 완료: canceledCount=${body.canceledCount}`);"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "09-04. [Step4] 3차 강제 재실행 → canceledCount=1 (이전 재실행 취소)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/batch/BATCH_DAILY_REPORT/run", "host": ["{{baseUrl}}"], "path": ["api","batch","BATCH_DAILY_REPORT","run"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseBatchDate\": \"20260101\",\n  \"forceRerun\": true,\n  \"params\": {\n    \"reportType\": \"FINAL\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('[Step4] SUCCESS', () => pm.expect(body.resRtCode).to.eql('SUCCESS'));",
+                  "pm.test('canceledCount=1 (Step3 결과 취소)', () => pm.expect(body.canceledCount).to.be.at.least(1));",
+                  "console.log(`[Step4] 3차 재실행: canceledCount=${body.canceledCount}, seq ${body.batchExecuteSeq ?? 'N/A'}`);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

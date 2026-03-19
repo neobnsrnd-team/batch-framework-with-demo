@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: hanabank-nbc-mis-batch
+
+  # ─────────────────────────────────────────────────────────────
+  # Oracle DataSource (D_SPIDERLINK 스키마)
+  # ─────────────────────────────────────────────────────────────
+  datasource:
+    url: jdbc:oracle:thin:@localhost:1521/ORCL
+    username: D_SPIDERLINK
+    password: change_me
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      pool-name: batch-hikari-pool
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1 FROM DUAL
+
+  # ─────────────────────────────────────────────────────────────
+  # Spring Security 자동 설정 비활성화
+  # (SecurityConfig에서 직접 구성)
+  # ─────────────────────────────────────────────────────────────
+  security:
+    user:
+      name: ""        # 자동 생성 계정 비활성화
+
+# ─────────────────────────────────────────────────────────────
+# MyBatis 설정
+# ─────────────────────────────────────────────────────────────
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.hanabank.nbc.mis.batch.framework.vo
+  configuration:
+    map-underscore-to-camel-case: false   # XML resultMap으로 명시적 매핑
+    default-fetch-size: 100
+    default-statement-timeout: 30
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+# ─────────────────────────────────────────────────────────────
+# 배치 프레임워크 설정
+# ─────────────────────────────────────────────────────────────
+batch:
+  framework:
+    scheduler-pool-size: 5      # 동시 실행 가능한 최대 배치 수
+    fail-fast: false            # 단건 실패 시 전체 중단 여부
+    log-interval: 1000          # 진행률 로그 출력 간격 (건)
+    api:
+      username: batchadmin      # REST API Basic Auth 사용자명
+      password: batchpass       # REST API Basic Auth 패스워드
+
+# ─────────────────────────────────────────────────────────────
+# 서버 설정
+# ─────────────────────────────────────────────────────────────
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 5
+
+# ─────────────────────────────────────────────────────────────
+# 로깅 설정
+# ─────────────────────────────────────────────────────────────
+logging:
+  config: classpath:logback-spring.xml
+  level:
+    root: INFO
+    com.hanabank.nbc.mis.batch: DEBUG
+    org.mybatis: DEBUG              # MyBatis SQL 로그
+    org.springframework.security: INFO
+    com.zaxxer.hikari: INFO
